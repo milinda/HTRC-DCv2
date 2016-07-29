@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-    Libvirt DC Manager
-    ~~~~~~~~~~
-    Data Capsules Manager written on of libvirt.
+    Libvirt VM Manager
+    ~~~~~~~~~~~~~~~~~~
+    VM Manager written on top of libvirt.
 
     :author Milinda Pathirage, Samitha Liyanage
     :maintainer Milinda Pathirage, Samitha Liyanage
@@ -33,48 +33,73 @@ class LibVirtVMManager(VMManager):
             host_info['config'] = host_config
             lv_hosts[host_id] = host_info
 
+    def create_vm(self, img, vcpus, mem):
+        pass
+
+    def _clone_image(self, src_img_name, vm_id, storage_pool, host_uri):
+        conn = libvirt.open(host_uri)
+        try:
+            sp = conn.storagePoolLookupByName(storage_pool)
+            if sp is None:
+                err_msg = 'Failed to locate storage pool {}'.format(storage_pool)
+                logging.error(err_msg)
+                raise RuntimeError(err_msg)
+
+            srcvol = sp.storageVolLookupByName(src_img_name)
+            newvol_xml = _create_volume_xml(vm_id, srcvol.info()[1], 12)
+            newvol = sp.createXMLFrom(newvol_xml, srcvol, 0)
+            
+            if newvol is None:
+                err_msg = 'Failed to clone image {}'.format(src_img_name)
+                logging.err(err_msg)
+                raise RuntimeError(err_msg)
+
+            return newvol.path()
+        finally:
+            conn.close()
+
     def _is_image_exists(self, image_name, storage_pool, host_uri):
         conn = libvirt.openReadOnly(host_uri)
-        if conn is None:
-            err_msg = 'Cannot connect to {}'.format(host_uri)
-            logging.error(err_msg)
-            raise RuntimeError(err_msg)
+        try:
+            if conn is None:
+                err_msg = 'Cannot connect to {}'.format(host_uri)
+                logging.error(err_msg)
+                raise RuntimeError(err_msg)
 
-        sp = conn.storagePoolLookupByName(storage_pool)
-        if sp is None:
-            err_msg = 'Failed to locate storage pool {}'.format(storage_pool)
-            logging.error(err_msg)
-            raise RuntimeError(err_msg)
+            sp = conn.storagePoolLookupByName(storage_pool)
+            if sp is None:
+                err_msg = 'Failed to locate storage pool {}'.format(storage_pool)
+                logging.error(err_msg)
+                raise RuntimeError(err_msg)
 
-        vol = sp.storageVolLookupByName(image_name)
-
-        conn.close()
-
-        return vol is not None
-
-    
+            vol = sp.storageVolLookupByName(image_name)
+            return vol is not None
+        finally:
+            conn.close()
 
     def _get_lv_host_capability(self, host_uri):
         # This should talk to DB to get existing capsules running this host.
         # Then update the available slots accordingly (May be libvirtd already
         # do that).
         conn = libvirt.openReadOnly(host_uri)
-        if conn is None:
-            raise RuntimeError('Cannot connect to {}'.format(host_uri))
 
-        vcpus = conn.getMaxVcpus(None)
-        nodeinfo = conn.getInfo()
-        memlist = conn.getCellsFreeMemory(0, nodeinfo[4])
+        try:
+            if conn is None:
+                raise RuntimeError('Cannot connect to {}'.format(host_uri))
 
-        conn.close()
+            vcpus = conn.getMaxVcpus(None)
+            nodeinfo = conn.getInfo()
+            memlist = conn.getCellsFreeMemory(0, nodeinfo[4])
 
-        freemem = 0
+            freemem = 0
 
-        for cell_freemem in memlist:
-            freemem += cell_freemem
+            for cell_freemem in memlist:
+                freemem += cell_freemem
 
-        return {'max_vcpus': vcpus, 'freemem': freemem,
-                'totalmem': nodeinfo[1]}
+            return {'max_vcpus': vcpus, 'freemem': freemem,
+                    'totalmem': nodeinfo[1]}
+        finally:
+            conn.close()
 
     def _get_libvirt_remote_uri(self, host_config={}):
         # TODO: This currently works only for non-secure tcp. Fix it to add
@@ -85,7 +110,22 @@ class LibVirtVMManager(VMManager):
                                          host_config['port'],
                                          host_config['path'])
 
-    def _create_vm_xml(host_config, name, memmax, mem, vcpus, vnc_port, image, disk_volume, 
+    def _create_volume_xml(self, vol_name, vol_capacity, vol_allocation, vol_allocation_unit='G'):
+        volume = ElementTree.Element('volume')
+        
+        name = ElementTree.SubElement(volume, 'name')
+        name.text = '{}.img'.format(vol_name)
+
+        allocation = ElementTree.SubElement(volume, 'allocation')
+        allocation.set('unit', vol_allocation_unit)
+        allocation.text = str(vol_allocation)
+
+        capacity = ElementTree.SubElement(volume, 'capacity')
+        capacity.text = str(vol_capacity)
+
+        return ElementTree.tostring(volume)
+
+    def _create_vm_xml(self, host_config, name, memmax, mem, vcpus, vnc_port, img_path, 
                        memunit='KiB', arch='x86_64'):
         domain = ElementTree.Element('domain')
         domain.set('type', host_config['type'])
@@ -114,6 +154,17 @@ class LibVirtVMManager(VMManager):
         devices = ElementTree.SubElement(domain, 'devices')
         devices_emu = ElementTree.SubElement(devices, 'emulator')
         devices_emu.text = host_config['emulator']
+
+        # Disk types should be configurable and it should be possible to figure out proper source.
+        disk = ElementTree.SubElement(devices, 'disk')
+        disk.set('device', 'disk')
+        disk.set('type', 'file')
+
+        source = ElementTree.SubElement(disk, 'source')
+        source.set('file', img_path)
+
+        target = ElementTree.SubElement(disk, 'target')
+        target.set('dev', 'hda')
 
         network_interface = ElementTree.SubElement(devices, 'interface')
         network_interface.set('type', 'network')

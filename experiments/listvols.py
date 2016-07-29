@@ -16,11 +16,12 @@ if sp == None:
     exit(1)
 
 stgvols = sp.listVolumes()
-print('Storage pool: '+poolName)
+print('Storage pool: \n'+ str(sp.XMLDesc()))
 for stgvol in stgvols :
     print('  Storage vol: '+stgvol)
     volinfo = sp.storageVolLookupByName(stgvol)
-    print('  Vol info: ' + str(volinfo.path()))
+    print('  Vol path: ' + str(volinfo.path()))
+    print('  Vol allocation: ' + str(volinfo.info()[1]))
 
 conn.close()
 exit(0)

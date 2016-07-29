@@ -27,16 +27,16 @@ class VMManagerFactory:
 
 
 class VMManager(object):
-    def create_vm(self):
+    def create_vm(self, img, vcpus, mem):
         raise NotImplementedError
 
-    def switch_vm_mode(self):
+    def switch_vm_mode(self, vm_id):
         raise NotImplementedError
 
-    def stop_vm(self):
+    def stop_vm(self, vm_id):
         raise NotImplementedError
 
-    def delete_vm(self):
+    def delete_vm(self, vm_id, backup=False):
         raise NotImplementedError
 
 
