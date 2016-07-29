@@ -50,9 +50,10 @@ class LibVirtDCManager(DCManager):
         vol = sp.storageVolLookupByName(image_name)
 
         conn.close()
-        
+
         return vol is not None
 
+    
 
     def _get_dc_host_capability(self, host_uri):
         # This should talk to DB to get existing capsules running this host.
