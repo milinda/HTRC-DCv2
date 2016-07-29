@@ -12,6 +12,8 @@ from __future__ import print_function
 import sys
 import os
 import libvirt
+import logging
+import logging.config
 from flask import Flask, request, session, g, redirect, url_for, abort, \
     render_template, flash, jsonify
 
@@ -23,7 +25,15 @@ app.config.update(dict(
 app.config.from_pyfile('config.py')
 app.config.from_envvar('DCV2_SETTINGS', silent=True)
 
-print(app.config)
+try:
+    with app.open_instance_resource('logging.conf') as f:
+        logging.config.fileConfig(f.name)
+except:
+    logging.basicConfig(format='%(asctime)s %(levelname)s:%(message)s',
+                        datefmt='%m/%d/%Y %I:%M:%S %p',
+                        level=logging.INFO)
+    logging.warning('Couldn\'t find logging configuration (logging.conf)' +
+                    ' file in instance directory.')
 
 conn_str = 'qemu+tcp://' + app.config['VM_HOST'] + '/system'
 conn = libvirt.open(conn_str)
