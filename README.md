@@ -1,2 +1,3 @@
-# HTRC-DCv2
-HTRC Data Capsules version 2 based on libvirt
+# Secure Data Gateway
+
+This is an implementation of concepts in HTRC Data Capsules on top of libvirt. 
