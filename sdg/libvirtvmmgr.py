@@ -10,29 +10,28 @@
 """
 import libvirt
 import logging
-from dcmgr import DCManager
+from dcmgr import VMManager
 from xml.etree import ElementTree
-from string import ascii_lowercase
 
 
-class LibVirtDCManager(DCManager):
+class LibVirtVMManager(VMManager):
     class Factory:
         def create(self, config={}):
-            return LibVirtDCManager(config)
+            return LibVirtVMManager(config)
 
-    dc_hosts = {}
+    lv_hosts = {}
 
     def __init__(self, config={}):
-        dc_hosts_config = config['DC_HOSTS']
-        for host_id, host_config in dc_hosts_config.iteritems():
+        lv_hosts_config = config['LV_HOSTS']
+        for host_id, host_config in lv_hosts_config.iteritems():
             logging.info('Loading host configuration for host {}'
                          .format(host_id))
             host_info = {}
             host_uri = _get_libvirt_remote_uri(host_config)
             host_info['uri'] = host_uri
-            host_info['capacity'] = _get_dc_host_capability(host_uri)
+            host_info['capacity'] = _get_lv_host_capability(host_uri)
             host_info['config'] = host_config
-            dc_hosts[host_id] = host_info
+            lv_hosts[host_id] = host_info
 
     def _is_image_exists(self, image_name, storage_pool, host_uri):
         conn = libvirt.openReadOnly(host_uri)
@@ -55,7 +54,7 @@ class LibVirtDCManager(DCManager):
 
     
 
-    def _get_dc_host_capability(self, host_uri):
+    def _get_lv_host_capability(self, host_uri):
         # This should talk to DB to get existing capsules running this host.
         # Then update the available slots accordingly (May be libvirtd already
         # do that).
@@ -86,7 +85,7 @@ class LibVirtDCManager(DCManager):
                                          host_config['port'],
                                          host_config['path'])
 
-    def _create_capsule_xml(host_config, name, memmax, mem, vcpus, vnc_port, image, disk_volume, 
+    def _create_vm_xml(host_config, name, memmax, mem, vcpus, vnc_port, image, disk_volume, 
                        memunit='KiB', arch='x86_64'):
         domain = ElementTree.Element('domain')
         domain.set('type', host_config['type'])
