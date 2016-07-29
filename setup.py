@@ -1,8 +1,8 @@
 from setuptools import setup
 
 setup(
-    name='dcv2',
-    packages=['dcv2'],
+    name='sdg',
+    packages=['sdg'],
     include_package_data=True,
     install_requires=[
         'flask',
