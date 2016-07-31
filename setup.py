@@ -7,6 +7,10 @@ setup(
     install_requires=[
         'flask',
         'libvirt-python',
+        'Flask-SQLAlchemy',
+        'Flask-Testing',
+        'Flask-Bootstrap',
+        'daemons'
     ],
     setup_requires=[
         'pytest-runner',
@@ -14,4 +18,5 @@ setup(
     tests_require=[
         'pytest',
     ],
+    test_suite="tests"
 )
