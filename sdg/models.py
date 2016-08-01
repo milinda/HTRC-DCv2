@@ -36,7 +36,6 @@ class VMHost(db.Model):
         self.storage_pool = config['storage_pool']
 
     def __repr__(self):
-        # TODO: Improve this to handle ssh uris and paramters 
         return '<VMHost(driver={},transport={},hostname={},port={},path={})>'.format(
             self.driver, self.transport, self.hostname, self.port, self.path)
 
@@ -57,23 +56,24 @@ class VMImage(db.Model):
         return '<VMImage(name={})>'.format(self.name)
 
 class VMMode(enum.Enum):
-    MAINTENANCE = 'MAINTENANCE'
-    SECURE = 'SECURE'
+    m = 'm'
+    s = 's'
 
 class VMState(enum.Enum):
-    CREATED = 'CREATED'
-    RUNNING = 'RUNNING'
-    STOPPED = 'STOPPED'
-    SUSPENDED = 'SUSPENDED'
-    FAILED = 'FAILED'
-    DELETED = 'DELETED'
+    created = 'created'
+    running = 'running'
+    stopped = 'stopped'
+    suspended = 'suspended'
+    failed = 'failed'
+    deleted = 'deleted'
 
 class VM(db.Model):
     __tablename__ = 'vm'
 
     id = db.Column(db.Integer, primary_key=True)
-    mode = db.Column(db.Enum(VMMode))
-    state = db.Column(db.Enum(VMState))
+    mode = db.Column(db.Enum('m','s', name='vm_modes'))
+    state = db.Column(db.Enum('created', 'running', 'stopped', 'suspended', 'failed', 'deleted', 
+                              name='vm_states'))
     hostname = db.Column(db.String(128))
     ssh_port = db.Column(db.Integer)
     vnc_port = db.Column(db.Integer)
@@ -90,8 +90,21 @@ class VM(db.Model):
     vmhost_id = db.Column(db.Integer, db.ForeignKey('vmhost.id'))
     vmhost = db.relationship('VMHost', backref=db.backref('vms', lazy='dynamic'))
     
-    def __init__(self):
-        pass
+    def __init__(self, mode, state, hostname, ssh_port, vnc_port, image, vnc_username, vnc_password,
+                 vcpus, memmb, diskgb, user, vmhost):
+        self.mode = mode
+        self.state = state
+        self.hostname = hostname
+        self.ssh_port = ssh_port
+        self.vnc_port = vnc_port
+        self.vmimage = image
+        self.vnc_username = vnc_username
+        self.vnc_password = vnc_password
+        self.vcpus = vcpus
+        self.memmb = memmb
+        self.diskgb = diskgb
+        self.user = user
+        self.vmhost = vmhost
 
     def __repr__(self):
         return '<VM(id={},mode={},state={},hostname={},user={})>'.format(
@@ -127,6 +140,7 @@ class Result(db.Model):
     vm_id = db.Column(db.Integer, db.ForeignKey('vm.id'))
     vm = db.relationship('VM', backref=db.backref('results', lazy='dynamic'))
     notified = db.Column(db.Boolean, default=False)
+    approved = db.Column(db.Boolean, default=False)
 
     def __init__(self, content, vm):
         self.content = content
@@ -137,4 +151,25 @@ class Result(db.Model):
 
 class VMActivity(db.Model):
     __tablename__ = 'vmactivity'
-    pass
+
+    id = db.Column(db.BigInteger, primary_key=True)
+    timestamp = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    vm_id = db.Column(db.Integer, db.ForeignKey('vm.id'))
+    vm = db.relationship('VM', backref=db.backref('activities', lazy='dynamic'))
+    prev_mode = db.Column(db.Enum('m','s', name='vm_modes'))
+    curr_mode = db.Column(db.Enum('m','s', name='vm_modes'))
+    prev_state = db.Column(db.Enum('created', 'running', 'stopped', 'suspended', 'failed', 'deleted', 
+                              name='vm_states'))
+    curr_state = db.Column(db.Enum('created', 'running', 'stopped', 'suspended', 'failed', 'deleted', 
+                              name='vm_states'))
+    
+    def __init__(self, vm, prev_mode, curr_mode, prev_state, curr_state):
+        self.vm = vm
+        self.prev_mode = prev_mode
+        self.curr_mode = curr_mode
+        self.prev_state = prev_state
+        self.curr_state = curr_state
+
+    def __repr__(self):
+        return '<VMActivity(ts={},prev_mode={},curr_mode={},prev_state={},curr_state={})>'.format(
+               self.timestamp, self.prev_mode, self.curr_mode, self.prev_state, self.curr_state)
