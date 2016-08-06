@@ -11,4 +11,4 @@ This is an implementation of concepts in [HTRC Data Capsules](http://homes.soic.
 * Install pip: ```sudo easy_install pip```
 * Install Flask: ```pip install Flask --user```
 * Install libvrit-python: ```pip install libvirt-python --user```
-* Install Flask-Security, Flask-SQLAlchemy, Flask-Testing, Flask-Bootstrap and daemons libraries using pip.
+* Install [Flask-Security](https://pythonhosted.org/Flask-Security/), [Flask-SQLAlchemy](http://flask-sqlalchemy.pocoo.org/2.1/), [Flask-Testing](https://pythonhosted.org/Flask-Testing/), [Flask-Bootstrap](https://pythonhosted.org/Flask-Bootstrap/) and [daemons](https://pypi.python.org/pypi/daemons) libraries using pip.
