@@ -1,6 +1,8 @@
-import enum
+# -*- coding: utf-8 -*-
+
 import datetime
 from flask_sqlalchemy import SQLAlchemy
+from flask.ext.security import UserMixin, RoleMixin, SQLAlchemyUserDatastore
 
 db = SQLAlchemy()
 
@@ -55,18 +57,6 @@ class VMImage(db.Model):
     def __repr__(self):
         return '<VMImage(name={})>'.format(self.name)
 
-class VMMode(enum.Enum):
-    m = 'm'
-    s = 's'
-
-class VMState(enum.Enum):
-    created = 'created'
-    running = 'running'
-    stopped = 'stopped'
-    suspended = 'suspended'
-    failed = 'failed'
-    deleted = 'deleted'
-
 class VM(db.Model):
     __tablename__ = 'vm'
 
@@ -85,8 +75,8 @@ class VM(db.Model):
     memmb = db.Column(db.Integer)
     diskgb = db.Column(db.Integer)
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
-    user = db.relationship('User', backref=db.backref('vms', lazy='dynamic'))
+    user_id = db.Column(db.Integer, db.ForeignKey('vmuser.id'))
+    user = db.relationship('VMUser', backref=db.backref('vms', lazy='dynamic'))
     vmhost_id = db.Column(db.Integer, db.ForeignKey('vmhost.id'))
     vmhost = db.relationship('VMHost', backref=db.backref('vms', lazy='dynamic'))
     
@@ -110,8 +100,8 @@ class VM(db.Model):
         return '<VM(id={},mode={},state={},hostname={},user={})>'.format(
                self.id, self.mode, self.state, self.hostname, self.user_id)
 
-class User(db.Model):
-    __tablename__ = 'user'
+class VMUser(db.Model):
+    __tablename__ = 'vmuser'
 
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(128), unique=True)
@@ -128,7 +118,7 @@ class User(db.Model):
         self.disk_quota = disk_quota
 
     def __repr__(self):
-        return '<User(username={},email={}))>'.format(self.username, self.email)
+        return '<VMUser(username={},email={}))>'.format(self.username, self.email)
 
 class Result(db.Model):
     __tablename__ = 'result'
@@ -173,3 +163,25 @@ class VMActivity(db.Model):
     def __repr__(self):
         return '<VMActivity(ts={},prev_mode={},curr_mode={},prev_state={},curr_state={})>'.format(
                self.timestamp, self.prev_mode, self.curr_mode, self.prev_state, self.curr_state)
+
+# User management
+roles_users = db.Table('roles_users',
+        db.Column('user_id', db.Integer(), db.ForeignKey('user.id')),
+        db.Column('role_id', db.Integer(), db.ForeignKey('role.id')))
+
+class Role(db.Model, RoleMixin):
+    id = db.Column(db.Integer(), primary_key=True)
+    name = db.Column(db.String(80), unique=True)
+    description = db.Column(db.String(255))
+
+class User(db.Model, UserMixin):
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(255), unique=True)
+    password = db.Column(db.String(255))
+    active = db.Column(db.Boolean())
+    confirmed_at = db.Column(db.DateTime())
+    roles = db.relationship('Role', secondary=roles_users,
+                            backref=db.backref('users', lazy='dynamic'))
+
+# Setup Flask-Security
+user_datastore = SQLAlchemyUserDatastore(db, User, Role)

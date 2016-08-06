@@ -5,7 +5,7 @@ setup(
     packages=['sdg'],
     include_package_data=True,
     install_requires=[
-        'flask',
+        'Flask',
         'libvirt-python',
         'Flask-SQLAlchemy',
         'Flask-Testing',

@@ -26,7 +26,7 @@ class VMManagerFactory:
 # To create a VMManager instance use VMManagerFactory.create_dc_mgr()
 
 
-class VMManager(object):
+class VMManager:
     def create_vm(self, img, vcpus, mem):
         raise NotImplementedError
 
